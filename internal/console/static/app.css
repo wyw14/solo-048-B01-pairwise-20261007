@@ -1,0 +1,28 @@
+:root { color-scheme: light; font-family: Inter, "Segoe UI", sans-serif; color: #17212b; background: #f3f5f6; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; }
+header { height: 64px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; background: #132d2f; color: #fff; }
+header div { display: flex; align-items: baseline; gap: 12px; }
+header strong { font-size: 20px; }
+header span { color: #a7c7c4; font-size: 13px; }
+nav { display: flex; height: 100%; }
+nav a { color: #dce8e6; text-decoration: none; padding: 21px 16px; border-bottom: 3px solid transparent; }
+nav a:hover { background: #1a3b3d; border-color: #eb9d3a; }
+main { max-width: 1180px; margin: 0 auto; padding: 30px 24px 56px; }
+.heading, .section-title { display: flex; align-items: center; justify-content: space-between; }
+.heading p { margin: 0 0 6px; color: #64737c; font-size: 12px; font-weight: 700; }
+h1 { margin: 0; font-size: 30px; letter-spacing: 0; }
+h2 { font-size: 17px; margin: 28px 0 14px; }
+#connection { border-left: 3px solid #eb9d3a; background: #fff; padding: 9px 12px; font-size: 13px; }
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 28px; background: #d7dddf; border: 1px solid #d7dddf; }
+.metric { background: #fff; padding: 18px; min-height: 96px; }
+.metric span { display: block; color: #66757d; font-size: 12px; }
+.metric strong { display: block; font-size: 25px; margin-top: 10px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.panel { background: #fff; border: 1px solid #dbe0e2; border-radius: 4px; padding: 18px; min-height: 140px; }
+.panel h3 { margin: 0 0 12px; font-size: 16px; }
+.panel dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; margin: 0; font-size: 13px; }
+.panel dt { color: #63727a; }.panel dd { margin: 0; font-weight: 650; }
+button { background: #1f6967; color: #fff; border: 0; border-radius: 4px; height: 34px; padding: 0 14px; cursor: pointer; }
+button:hover { background: #164f4e; }
+@media (max-width: 720px) { header { height: auto; padding: 16px; align-items: flex-start; gap: 14px; } header, header div { flex-direction: column; } nav { width: 100%; overflow-x: auto; } nav a { padding: 10px 13px; } main { padding: 22px 14px; } .summary, .grid { grid-template-columns: 1fr; } }
