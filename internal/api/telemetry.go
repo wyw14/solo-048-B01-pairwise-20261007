@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,6 +16,11 @@ func (a *App) recordTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.Telemetry.Add(sample); err != nil {
+		var conflict *telemetry.SampleConflictError
+		if errors.As(err, &conflict) {
+			writeError(w, http.StatusConflict, err)
+			return
+		}
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}

@@ -25,6 +25,23 @@ type Sample struct {
 	At        time.Time `json:"at"`
 }
 
+// SampleConflictError reports a sample whose station, kind and watermark are
+// already recorded with a different value. The stored sample is left
+// untouched: first write wins, so a confirmed snapshot can never be mutated
+// by duplicate telemetry.
+type SampleConflictError struct {
+	StationID string
+	Kind      Kind
+	Watermark uint64
+	Existing  float64
+	Incoming  float64
+}
+
+func (e *SampleConflictError) Error() string {
+	return fmt.Sprintf("station %s %s watermark %d already recorded as %g, rejecting conflicting value %g",
+		e.StationID, e.Kind, e.Watermark, e.Existing, e.Incoming)
+}
+
 type Series struct {
 	mu      sync.RWMutex
 	samples map[string]map[Kind][]Sample
@@ -50,8 +67,20 @@ func (s *Series) Add(sample Sample) error {
 	if s.samples[sample.StationID] == nil {
 		s.samples[sample.StationID] = make(map[Kind][]Sample)
 	}
-	items := append(s.samples[sample.StationID][sample.Kind], sample)
-	sort.Slice(items, func(i, j int) bool { return items[i].Watermark < items[j].Watermark })
+	items := s.samples[sample.StationID][sample.Kind]
+	index := sort.Search(len(items), func(i int) bool { return items[i].Watermark >= sample.Watermark })
+	if index < len(items) && items[index].Watermark == sample.Watermark {
+		if items[index].Value == sample.Value {
+			return nil
+		}
+		return &SampleConflictError{
+			StationID: sample.StationID, Kind: sample.Kind, Watermark: sample.Watermark,
+			Existing: items[index].Value, Incoming: sample.Value,
+		}
+	}
+	items = append(items, Sample{})
+	copy(items[index+1:], items[index:])
+	items[index] = sample
 	if len(items) > s.limit {
 		items = append([]Sample(nil), items[len(items)-s.limit:]...)
 	}
