@@ -1,11 +1,17 @@
 package telemetry
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 )
+
+// ErrWatermarkConflict is returned when a sample repeats a watermark already
+// recorded for the same station and kind but carries a different value. The
+// first sample at a watermark wins and remains immutable.
+var ErrWatermarkConflict = errors.New("watermark conflict: sample for station and kind already recorded with a different value")
 
 type Kind string
 
@@ -47,16 +53,40 @@ func (s *Series) Add(sample Sample) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.samples[sample.StationID] == nil {
-		s.samples[sample.StationID] = make(map[Kind][]Sample)
+	byKind := s.samples[sample.StationID]
+	if byKind == nil {
+		byKind = make(map[Kind][]Sample)
+		s.samples[sample.StationID] = byKind
 	}
-	items := append(s.samples[sample.StationID][sample.Kind], sample)
-	sort.Slice(items, func(i, j int) bool { return items[i].Watermark < items[j].Watermark })
+	items := byKind[sample.Kind]
+	index := sort.Search(len(items), func(i int) bool { return items[i].Watermark >= sample.Watermark })
+	if index < len(items) && items[index].Watermark == sample.Watermark {
+		// A watermark identifies an immutable reading for a station/kind.
+		// An identical retransmission is idempotent; a differing value is a
+		// conflict and must not overwrite the confirmed reading.
+		if items[index].Value != sample.Value {
+			return fmt.Errorf("%w: station=%s kind=%s watermark=%d recorded=%g received=%g",
+				ErrWatermarkConflict, sample.StationID, sample.Kind, sample.Watermark,
+				items[index].Value, sample.Value)
+		}
+		return nil
+	}
+	items = insertSample(items, index, sample)
 	if len(items) > s.limit {
-		items = append([]Sample(nil), items[len(items)-s.limit:]...)
+		items = items[len(items)-s.limit:]
 	}
-	s.samples[sample.StationID][sample.Kind] = items
+	byKind[sample.Kind] = items
 	return nil
+}
+
+// insertSample places sample at index without aliasing the backing array of
+// items, so in-flight readers of the previous slice keep an intact snapshot.
+func insertSample(items []Sample, index int, sample Sample) []Sample {
+	updated := make([]Sample, 0, len(items)+1)
+	updated = append(updated, items[:index]...)
+	updated = append(updated, sample)
+	updated = append(updated, items[index:]...)
+	return updated
 }
 
 func (s *Series) Latest(stationID string, kind Kind) (Sample, bool) {
